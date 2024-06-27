@@ -9,3 +9,5 @@ finnhub-python
 python-dotenv
 beautifulsoup4
 yfinance
+transformers
+huggingface-hub

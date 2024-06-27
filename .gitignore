@@ -8,4 +8,4 @@ ticker_data/
 
 # test files
 test.py
-test.ipynb
+process_top50.ipynb
