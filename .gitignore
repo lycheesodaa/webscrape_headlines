@@ -1,3 +1,11 @@
 # Project exclude paths
 /venv/
 .env
+.idea/
+output/
+external_data/
+ticker_data/
+
+# test files
+test.py
+test.ipynb

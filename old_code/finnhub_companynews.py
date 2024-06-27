@@ -37,11 +37,14 @@ from langdetect import detect
 import time
 import sqlite3
 import bs4 as bs
+import pandas as pd
 
-def delta_date(start_date,end_date):
+
+def delta_date(start_date, end_date):
     """Function that returns the number of days between 2 dates """
 
     return abs((datetime.strptime(start_date, "%Y-%m-%d") - datetime.strptime(end_date, "%Y-%m-%d")).days)
+
 
 def get_tickers():
     """Method that gets the stock symbols from companies listed in the S&P 500
@@ -59,15 +62,24 @@ def get_tickers():
     for row in table.findAll('tr')[1:]:
         ticker = row.findAll('td')[0].text.strip('\n')
         tickers.append(ticker)
+    print(f"DEBUG: Total number of stock symbols: {len(tickers)}")
 
     return tickers
 
-class Init():
-    """Class that initializes global value for the module. It also use general method to initialize value.
+
+def get_exclusions():
+    file_list = os.listdir("../external_data/finnhub_company_news")
+    file_names_without_extension = [os.path.splitext(f)[0] for f in file_list]
+
+    return file_names_without_extension
+
+
+class Init:
+    """Class that initializes global value for the module. It also uses a general method to initialize values.
      """
 
     def __init__(self):
-        """Built-in method to inialize the global values for the module
+        """Built-in method to initialize the global values for the module
 
         Attributes
         -----------
@@ -88,36 +100,47 @@ class Init():
         `self.end_date_` : datetime object
             same thing as `start_date` but as a datetime object
         """
+        self.is_custom_date = config('CUSTOM_DATE') == 'True'
+        self.tickers = get_tickers()
+        # self.tickers = ["NVDA"]
 
-        #initialize value here
-        self.start_date = "2020-09-22"
-        self.end_date = "2021-02-22"
-        self.tickers = ['AMZN']
+        if self.is_custom_date:
+            # change values here if needed
+            self.start_date = "2023-09-22"
+            self.end_date = "2023-09-25"
+
+            self.start_date_ = datetime.strptime(self.start_date, "%Y-%m-%d")  # datetime object
+            self.end_date_ = datetime.strptime(self.end_date, "%Y-%m-%d")  # datetime object
+            self.delta_date = abs((self.end_date_ - self.start_date_).days)  # number of days between 2 dates
+
+            if self.start_date_ > self.end_date_:
+                raise Exception("'start_date' is after 'end_date'")
+
+            t = (datetime.now() - relativedelta(years=1))
+
+            if self.start_date_ <= t:
+                raise Exception("'start_date' is older than 1 year. It doesn't work with the free version of FinHub")
+        else:
+            # Default is to instantiate to 1 year prior
+            self.start_date_ = (datetime.now() - relativedelta(years=1))
+            self.end_date_ = datetime.now()
+            self.start_date = self.start_date_.strftime("%Y-%m-%d")
+            self.end_date = self.end_date_.strftime("%Y-%m-%d")
+
+        print(f"DEBUG: Requesting data from {self.start_date} to {self.end_date}.")
 
         self.db_name = 'financial_data'
         self.dir_path = os.path.dirname(os.path.realpath(__file__)) + '/output/' + self.start_date + '_' + \
                         self.end_date + '/'
-        Path(self.dir_path).mkdir(parents=True, exist_ok=True) #create new path if it doesn't exist
-        self.start_date_ = datetime.strptime(self.start_date, "%Y-%m-%d")  #datetime object
-        self.end_date_ = datetime.strptime(self.end_date, "%Y-%m-%d")    #datetime object
-        self.delta_date = abs((self.end_date_ - self.start_date_).days) #number of days between 2 dates
+        Path(self.dir_path).mkdir(parents=True, exist_ok=True)  # create new path if it doesn't exist
+
+        print(f"DEBUG: Database path: {self.dir_path}{self.db_name}.db")
 
 
-        try:
-            self.start_date_ > self.end_date_
-        except:
-            print("'start_date' is after 'end_date'")
-
-        t = (datetime.now()- relativedelta(years=1))
-        d= datetime.strptime(self.start_date, "%Y-%m-%d")
-
-        if (datetime.strptime(self.start_date, "%Y-%m-%d") <= (datetime.now()- relativedelta(years=1))) :
-            raise Exception("'start_date' is older than 1 year. It doesn't work with the free version of FinHub")
-
-class FinnHub():
+class FinnHub:
     """Class to make API calls to FinnHub"""
 
-    def __init__(self,start_date,end_date,start_date_,end_date_,tickers,dir_path,db_name):
+    def __init__(self, start_date, end_date, start_date_, end_date_, tickers, dir_path, db_name):
         """ Class constructor
 
         Parameters
@@ -141,7 +164,7 @@ class FinnHub():
         Attributes
         ----------
         `self.max_call` : int
-            maximum api calls per minute for the finhub API
+            maximum api calls per minute for the finnhub API
         `self.time_sleep` : int
             seconds to sleep before making a new API call. Default is 60 seconds as the maximum number of API calls is
             per minute
@@ -149,34 +172,40 @@ class FinnHub():
             nb of request made so far. Set to 0 in constructor `__init__` as we may loop through ticker
             and want to avoid the variable to reset to 0 when exiting the wrapper `iterate_day()` (which could generate
             an error)
-        `self.finhub_key` : str
-            finhub unique API key. Get yours here : https://finnhub.io/
+        `self.finnhub_key` : str
+            finnhub unique API key. Get yours here : https://finnhub.io/
         `self.db_name : str
             default file name for the sql database
         """
 
-        #Initialize attributes values here
+        # Initialize attributes values here
         self.max_call = 60
         self.time_sleep = 60
         self.nb_request = 0
-        self.finhub_key = config('FINHUB_KEY')
-        self.news_header = ['category', 'datetime','headline','id','image','related','source','summary','url']
+        self.finnhub_key = config('FINNHUB_KEY')
+        self.news_header = ['category', 'datetime', 'headline', 'id', 'image', 'related', 'source', 'summary', 'url']
         self.start_date = start_date
         self.end_date = end_date
         self.tickers = tickers
-        self.ticker_request = tickers #different value because ticker like 'ALL' (All State) can generate error in SQLite
-                                    #database
+        # different value because ticker like 'ALL' (All State) can generate error in SQLite
+        self.ticker_request = tickers
+        self.ticker_count = 0
+        self.to_remove = get_exclusions()
+        self.tickers = [ticker_val for ticker_val in self.tickers if ticker_val not in self.to_remove]
+
+        # database
         self.dir_path = dir_path
         self.db_name = db_name
         self.js_data = []
 
-        self.start_date_ = start_date_ #datetime object
-        self.end_date_ = end_date_ #datetime object
+        self.start_date_ = start_date_  # datetime object
+        self.end_date_ = end_date_  # datetime object
 
-        #call the methods to access historical financial headlines
-        #tickers = get_tickers() #get_tickers is to get tickers from all the companies listedin the s&p 500
+        # call the methods to access historical financial headlines
+        # tickers = get_tickers() #get_tickers is to get tickers from all the companies listed in the s&p 500
 
         for ticker_ in self.tickers:
+            self.ticker_count += 1
             self.js_data.clear()
             self.ticker = ticker_ + '_'
             self.ticker_request = ticker_
@@ -184,21 +213,23 @@ class FinnHub():
             self.create_table()
             self.clean_table()
             self.lang_review()
+            self.export_csv()
 
     def init_sql(func):
         """ Decorator that open the sql database, save it and close it. The operation are between the opening and
-        saving of the file"""
+        saving of the file """
 
         def wrapper_(self):
             conn_ = sqlite3.connect(self.dir_path + self.db_name + '.db')
             c = conn_.cursor()
-            func(self,conn_,c)
+            func(self, conn_, c)
             conn_.commit()
             conn_.close()
+
         return wrapper_
 
     @init_sql
-    def clean_table(self,conn_,c):
+    def clean_table(self, conn_, c):
         """Method that clean the database using sqlite3
 
         Parameters
@@ -208,20 +239,21 @@ class FinnHub():
         `c` : database object
             Cursor object
         """
+        print(f"DEBUG: Cleaning SQLite table for {self.ticker_request} data...")
 
-        #remove NULL entry (row) from headline column
+        # remove NULL entry (row) from headline column
         c.execute(f" DELETE FROM {self.ticker} WHERE {self.news_header[2]} IS NULL OR "
                   f"trim({self.news_header[2]}) = '';")
         # remove NULL value from datetime
         c.execute(f" DELETE FROM {self.ticker} WHERE {self.news_header[1]} IS NULL OR "
                   f"trim({self.news_header[1]}) = '';")
 
-        #removes duplicate entries (row)
+        # removes duplicate entries (row)
         c.execute(f" DELETE FROM {self.ticker} WHERE rowid NOT IN (select MIN(rowid)"
                   f"FROM {self.ticker} GROUP BY {self.news_header[2]})")
 
     @init_sql
-    def create_table(self,conn_,c):
+    def create_table(self, conn_, c):
         """ Method that creates a table in SQLite database. It creates the table  in `self.dir_path` and write
         the data in it
 
@@ -232,53 +264,63 @@ class FinnHub():
         `c` : database object
             Cursor object
         """
+        print(f"DEBUG: Creating and populating SQLite table for {self.ticker_request} data...")
 
-        #create table if it does not exist
+        # create table if it does not exist
         c.execute(f'drop table if exists {self.ticker}')
         conn_.commit()
         c.execute(f"CREATE TABLE IF NOT EXISTS {self.ticker} ({self.news_header[0]})")
         conn_.commit()
 
-        #add columns to the table if the columns don't exist
-        for header_ in range(len(self.news_header)-1):
-            c.execute(f"alter table {self.ticker} add column '%s' " % self.news_header[header_+1])
+        # add columns to the table if the columns don't exist
+        for header_ in range(len(self.news_header) - 1):
+            c.execute(f"alter table {self.ticker} add column '%s' " % self.news_header[header_ + 1])
             conn_.commit()
 
         iteration = 0
         for data_ in self.js_data:
-            iteration +=1
-            try :
-                c.execute(f'insert into {self.ticker} values (?,?,?,?,?,?,?,?,?)',[data_[self.news_header[0]],
-                          data_[self.news_header[1]],data_[self.news_header[2]],data_[self.news_header[3]],
-                        data_[self.news_header[4]],data_[self.news_header[5]],data_[self.news_header[6]],
-                          data_[self.news_header[7]],data_[self.news_header[8]]])
+            iteration += 1
+            try:
+                c.execute(f'insert into {self.ticker} values (?,?,?,?,?,?,?,?,?)', [data_[self.news_header[0]],
+                                                                                    data_[self.news_header[1]],
+                                                                                    data_[self.news_header[2]],
+                                                                                    data_[self.news_header[3]],
+                                                                                    data_[self.news_header[4]],
+                                                                                    data_[self.news_header[5]],
+                                                                                    data_[self.news_header[6]],
+                                                                                    data_[self.news_header[7]],
+                                                                                    data_[self.news_header[8]]])
             except:
-                print(f"Error at the {iteration}th ieration")
+                print(f"ERROR: Error at the {iteration}th iteration")
 
             conn_.commit()
 
     def iterate_day(func):
-        """ Decorator that makes the API call on FinHub each days between the `self.start_date`
+        """ Decorator that makes the API call on FinHub each day between the `self.start_date`
         and `self.end_date` """
 
         def wrapper_(self):
-            delta_date_ = delta_date(self.start_date,self.end_date)
+            print(f"DEBUG: Requesting for {self.ticker_request} (ticker count = {self.ticker_count}/"
+                  f"{len(self.tickers) - len(self.to_remove)}) data...")
+            delta_date_ = delta_date(self.start_date, self.end_date)
             date_ = self.start_date
             date_obj = self.start_date_
 
             for item in range(delta_date_ + 1):
-                self.nb_request +=1
-                func(self,date_)
+                self.nb_request += 1
+                func(self, date_)
                 date_obj = date_obj + relativedelta(days=1)
-                date_  = date_obj.strftime("%Y-%m-%d")
-                if self.nb_request == (self.max_call-1):
+                date_ = date_obj.strftime("%Y-%m-%d")
+                if self.nb_request == (self.max_call - 1):
+                    print("Request limit reached. Resuming in 1min.")
                     time.sleep(self.time_sleep)
-                    self.nb_request=0
+                    self.nb_request = 0
+
         return wrapper_
 
     @init_sql
-    def lang_review(self,conn_,c):
-        """ Methods that delete non-english entries based on the 'headline' column in a SQLlite3 db
+    def lang_review(self, conn_, c):
+        """ Methods that delete non-english entries based on the 'headline' column in a SQLite3 db
 
         Parameters
         ----------
@@ -288,28 +330,47 @@ class FinnHub():
             Cursor object
         """
 
+        print(f"DEBUG: Deleting non-english entries for {self.ticker_request}...")
         list_ = []
         c.execute(f" SELECT {self.news_header[2]} FROM {self.ticker}")
 
-        #check for non-english headlines
+        # check for non-english headlines
         for item_ in c:
             if detect(item_[0]) != 'en':
                 list_.append(item_[0])
 
-        #delete non-english entries (rows)
-            query = f"DELETE FROM {self.ticker} where {self.news_header[2]} in ({','.join(['?']*len(list_))})"
+            # delete non-english entries (rows)
+            query = f"DELETE FROM {self.ticker} where {self.news_header[2]} in ({','.join(['?'] * len(list_))})"
             c.execute(query, list_)
 
     @iterate_day
-    def req_new(self,date_):
+    def req_new(self, date_):
         """ Method that makes news request(s) to the Finnhub API"""
 
-        request_ = requests.get('https://finnhub.io/api/v1/company-news?symbol=' + self.ticker_request + '&from=' +
-                                date_ + '&to=' + date_ + '&token=' + self.finhub_key)
-        self.js_data += request_.json()
+        response = requests.get('https://finnhub.io/api/v1/company-news?symbol=' + self.ticker_request + '&from=' +
+                                date_ + '&to=' + date_ + '&token=' + self.finnhub_key)
+        response.raise_for_status()
+        if response.status_code != 204:
+            try:
+                self.js_data += response.json()
+            except requests.exceptions.JSONDecodeError:
+                pass
+
+    def export_csv(self):
+        print(f"DEBUG: Exporting {self.ticker_request} data as CSV file...")
+        folder_name = 'finnhub_company_news'
+
+        if not os.path.exists(folder_name):
+            os.makedirs(folder_name)
+
+        cnx = sqlite3.connect(self.dir_path + self.db_name + '.db')
+        df = pd.read_sql_query(f"SELECT * FROM {self.ticker}", cnx)
+        df.to_csv(f'{folder_name}/{self.ticker_request}.csv')
+        cnx.commit()
+        cnx.close()
 
 
 init_ = Init()
 
-finhub = FinnHub(start_date=init_.start_date, end_date=init_.end_date,start_date_=init_.start_date_ ,
-                end_date_ =init_.end_date_, tickers=init_.tickers, dir_path =init_.dir_path,db_name=init_.db_name)
+finnhub_impl = FinnHub(start_date=init_.start_date, end_date=init_.end_date, start_date_=init_.start_date_,
+                       end_date_=init_.end_date_, tickers=init_.tickers, dir_path=init_.dir_path, db_name=init_.db_name)
