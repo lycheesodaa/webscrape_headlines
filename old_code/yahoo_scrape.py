@@ -35,7 +35,7 @@ def get_snp_symbols():
 
 
 def get_exclusions():
-    file_list = os.listdir("../ticker_data/news")
+    file_list = os.listdir("../yfinance_ticker_data/news")
     file_names_without_extension = [os.path.splitext(f)[0] for f in file_list]
 
     return file_names_without_extension
@@ -104,7 +104,7 @@ def get_news():
     for i, ticker in enumerate(tickers):
         print(f'Getting {ticker} news data ({i}/{len(tickers)})...')
         ticker_df = iterate_pages(ticker, snp500[ticker])
-        ticker_df.to_csv(f'ticker_data/news/{ticker}.csv')
+        ticker_df.to_csv(f'yfinance_ticker_data/news/{ticker}.csv')
         print('Export done.')
 
 

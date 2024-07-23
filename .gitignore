@@ -4,8 +4,7 @@
 .idea/
 output/
 external_data/
-ticker_data/
+yfinance_ticker_data/
 
 # test files
 test.py
-process_top50.ipynb

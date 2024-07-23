@@ -8,8 +8,9 @@ import pandas as pd
 import time
 import random as rd
 
+bloomberg_dir = 'external_data/bloomberg_news/'
+top50_news_dir = 'external_data/FNSPID/top50_news/'
 
-# time.sleep(rd.randint(1, 5))
 
 def get_snp_symbols():
     """Method that gets the stock symbols from companies listed in the S&P 500 from Wikipedia
@@ -34,7 +35,13 @@ def get_snp_symbols():
 
 
 def get_exclusions():
-    file_list = os.listdir("ticker_data/news")
+    file_list = os.listdir(bloomberg_dir)
+    file_names_without_extension = [os.path.splitext(f)[0] for f in file_list]
+
+    return file_names_without_extension
+
+def get_top50():
+    file_list = os.listdir(top50_news_dir)
     file_names_without_extension = [os.path.splitext(f)[0] for f in file_list]
 
     return file_names_without_extension
@@ -43,7 +50,7 @@ def get_exclusions():
 def iterate_pages(ticker, security):
     url = 'https://www.bloomberg.com/markets2/api/search'
     params = {
-        "query": security,
+        "query": ticker,
         "sort": "time:desc"
     }
     headers = {
@@ -53,7 +60,7 @@ def iterate_pages(ticker, security):
         "if-none-match": 'W/"1772-cSjFitLqTmCpeDqF+yZGxF2wpQk"',
         "newrelic": "eyJ2IjpbMCwxXSwiZCI6eyJ0eSI6IkJyb3dzZXIiLCJhYyI6IjE5ODI2OTciLCJhcCI6IjE0MDk1Mjc5OCIsImlkIjoiZDlmNmMyNjA4MTAyNzk5NCIsInRyIjoiZjMwOGExYWI0YWE4ODMyM2M4YTNkMjk1MjhjNmM1NzAiLCJ0aSI6MTcxOTIyMzYxMTg0NSwidGsiOiIyNTMwMCJ9fQ==",
         "priority": "u=1, i",
-        "referer": "https://www.bloomberg.com/search?query=NVDA",
+        "referer": f"https://www.bloomberg.com/search?query={ticker}",
         "sec-ch-ua": '"Not/A)Brand";v="8", "Chromium";v="126", "Microsoft Edge";v="126"',
         "sec-ch-ua-mobile": "?0",
         "sec-ch-ua-platform": '"Windows"',
@@ -65,12 +72,15 @@ def iterate_pages(ticker, security):
         "user-agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36 Edg/126.0.0.0"
     }
 
-    # fencepost for the initial dataframe
-    response = requests.get(url, params=params, headers=headers)
-    data = response.json()
-    df = pd.DataFrame.from_dict(data['results'])
-    time.sleep(rd.randint(1, 5))
-    print('Total news entries: {}'.format(data['total']))
+    # fencepost for the initial response
+    try:
+        response = requests.get(url, params=params, headers=headers)
+        data = response.json()
+        df = pd.DataFrame.from_dict(data['results'])
+        time.sleep(rd.randint(1, 5))
+        print('Total news entries: {}'.format(data['total']))
+    except Exception as e:
+        print(e)
 
     page = 2  # page number starts at 1 and is implicit for the fencepost
 
@@ -78,11 +88,14 @@ def iterate_pages(ticker, security):
     while True:
         params['page'] = page
 
-        response = requests.get(url, params=params, headers=headers)
-        data = response.json()
-        if 'results' not in data or len(data['results']) == 0:
-            break
-        df = pd.concat([df, pd.DataFrame.from_dict(data['results'])])
+        try:
+            response = requests.get(url, params=params, headers=headers)
+            data = response.json()
+            if 'results' not in data or len(data['results']) == 0:
+                break
+            df = pd.concat([df, pd.DataFrame.from_dict(data['results'])])
+        except Exception as e:
+            print(e)
 
         page += 1
         time.sleep(rd.randint(1, 5))
@@ -93,13 +106,15 @@ def iterate_pages(ticker, security):
 
 def get_news():
     snp500 = get_snp_symbols()
+    top50 = get_top50()
+    tickers = [symbol for symbol, security in snp500.items() if symbol in top50]
     exclusions = get_exclusions()
-    tickers = [symbol for symbol, security in snp500.items() if symbol not in exclusions]
+    tickers = [symbol for symbol in tickers if symbol not in exclusions]
 
     for i, ticker in enumerate(tickers):
         print(f'Getting {ticker} news data ({i}/{len(tickers)})...')
         ticker_df = iterate_pages(ticker, snp500[ticker])
-        ticker_df.to_csv(f'ticker_data/news/{ticker}.csv')
+        ticker_df.to_csv(bloomberg_dir + f'{ticker}.csv')
         print('Export done.')
 
 

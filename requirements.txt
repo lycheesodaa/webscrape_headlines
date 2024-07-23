@@ -11,3 +11,4 @@ beautifulsoup4
 yfinance
 transformers
 huggingface-hub
+datasets

@@ -37,8 +37,8 @@ import ta
 #
 #
 # def get_exclusions():
-#     # file_list = os.listdir("ticker_data")
-#     file_list = os.listdir("../ticker_data/metadata")
+#     # file_list = os.listdir("yfinance_ticker_data")
+#     file_list = os.listdir("../yfinance_ticker_data/metadata")
 #     file_names_without_extension = [os.path.splitext(f)[0] for f in file_list]
 #
 #     return file_names_without_extension
@@ -60,8 +60,8 @@ import ta
 #         actions=True,
 #         raise_errors=True
 #     )
-#     # df.to_csv(f'ticker_data/{ticker}.csv')
-#     json.dump(stock.info, open(f'ticker_data/metadata/{ticker}.json', 'w'))
+#     # df.to_csv(f'yfinance_ticker_data/{ticker}.csv')
+#     json.dump(stock.info, open(f'yfinance_ticker_data/metadata/{ticker}.json', 'w'))
 
 directory = "external_data/FNSPID/full_history/"
 
