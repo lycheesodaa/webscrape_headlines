@@ -68,18 +68,27 @@ while current_date <= end_date:
                 'tempC': float(entry['tempC']),
                 'heatIndexC': float(entry['HeatIndexC']),
                 'precipMM': float(entry['precipMM']),
-                'windspeedKmph': float(entry['windspeedKmph'])
+                'windspeedKmph': float(entry['windspeedKmph']),
+                'winddirDegree': float(entry['winddirDegree']),
+                'windGustKmph': float(entry['WindGustKmph']),
+                'weatherDesc': str(entry['weatherDesc']),
+                'visibility': float(entry['visibility']),
+                'pressure': float(entry['pressure']),
+                'cloudcover': float(entry['cloudcover']),
+                'dewPointC': float(entry['DewPointC']),
+                'uvIndex': float(entry['uvIndex']),
+                'feelsLikeC': float(entry['FeelsLikeC']),
             })
 
     all_data.extend(parsed_data)
     count += 1
 
-    if count % 10 == 0:
-        df = pd.DataFrame(all_data)
-        df.set_index('datetime', inplace=True)
-        df.sort_index(inplace=True)
-        df = df[~df.index.duplicated(keep='first')]
-        df.to_csv('sg_historical_hourly_weather.csv')
+    # if count % 10 == 0:
+    #     df = pd.DataFrame(all_data)
+    #     df.set_index('datetime', inplace=True)
+    #     df.sort_index(inplace=True)
+    #     df = df[~df.index.duplicated(keep='first')]
+    #     df.to_csv('sg_historical_hourly_weather.csv')
 
 
 df = pd.DataFrame(all_data)
