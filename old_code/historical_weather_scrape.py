@@ -5,7 +5,7 @@ import json
 from datetime import datetime, date
 from dateutil.relativedelta import relativedelta
 import calendar
-
+from tqdm import tqdm
 
 def get_last_day_of_month(year_, month_):
     _, last_day_ = calendar.monthrange(year_, month_)
@@ -27,7 +27,7 @@ while current_date <= end_date:
     print(f"{current_date.strftime('%B %Y')}: Last day is {last_day.strftime('%Y-%m-%d')}")
 
     url = (f"https://api.worldweatheronline.com/premium/v1/past-weather.ashx"
-           f"?q=Singapore&date={current_date.strftime('%Y-%m-%d')}&enddate={last_day.strftime('%Y-%m-%d')}"
+           f"?q=Canberra&date={current_date.strftime('%Y-%m-%d')}&enddate={last_day.strftime('%Y-%m-%d')}"
            f"&tp=1&format=json&key=fbc57f8ee9d4461e8e524518242507")
 
     current_date += relativedelta(months=1)
@@ -95,4 +95,4 @@ df = pd.DataFrame(all_data)
 df.set_index('datetime', inplace=True)
 df.sort_index(inplace=True)
 df = df[~df.index.duplicated(keep='first')]
-df.to_csv('sg_historical_hourly_weather.csv')
+df.to_csv('canberra_historical_hourly_weather.csv')
