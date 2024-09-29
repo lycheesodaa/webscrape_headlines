@@ -5,6 +5,8 @@
 output/
 external_data/
 yfinance_ticker_data/
+figures/
 
 # test files
 test.py
+test.ipynb
