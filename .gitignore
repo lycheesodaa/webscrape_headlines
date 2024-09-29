@@ -6,7 +6,9 @@ output/
 external_data/
 yfinance_ticker_data/
 figures/
+results/
 
 # test files
 test.py
 test.ipynb
+test.csv

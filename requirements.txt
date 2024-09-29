@@ -12,3 +12,4 @@ yfinance
 transformers
 huggingface-hub
 datasets
+pmdarima
