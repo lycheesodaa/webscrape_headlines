@@ -6,7 +6,11 @@ output/
 external_data/
 yfinance_ticker_data/
 figures/
+results/
+plots/
 
 # test files
 test.py
 test.ipynb
+
+__pycache__/
