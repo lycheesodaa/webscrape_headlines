@@ -2,13 +2,14 @@ import pandas as pd
 import os
 from tqdm import tqdm
 
-dir_path = "C:/Users/stucws/Documents/astar/data/demand_datasets/EMA dataset/"
+dir_path = "C:/Users/stucws/Documents/astar/data/demand_datasets/raw/EMA dataset/"
 file_list = os.listdir(dir_path)
+file_list = [item for item in file_list if not item.endswith(".zip")]
 
 all_dfs = []
 
 for file in tqdm(file_list):
-    df = pd.read_excel(dir_path + file, engine='xlrd')
+    df = pd.read_excel(dir_path + file)
 
     # Extract the date row and create a list of dates
     dates = df.iloc[0, 1::3]

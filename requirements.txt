@@ -13,3 +13,12 @@ transformers
 huggingface-hub
 datasets
 pmdarima
+PyWavelets
+EMD-signal
+openpyxl
+matplotlib
+seaborn
+scikit-learn
+scipy
+tqdm
+statsmodels

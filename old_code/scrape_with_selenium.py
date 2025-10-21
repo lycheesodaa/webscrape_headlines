@@ -42,7 +42,7 @@ time.sleep(1)
 def get_xls_links():
     soup = BeautifulSoup(driver.page_source, 'html.parser')
     links = soup.find_all('a', href=True)
-    return [link['href'] for link in links if link['href'].endswith('.xls')]
+    return [link['href'] for link in links if link['href'].endswith(('.xls', '.xlsx'))]
 
 
 def download_xls_links():
@@ -51,9 +51,12 @@ def download_xls_links():
 
     # Download each .xlsx file
     for link in xlsx_links:
+        # if '20240715' in link:
+        #     exit()
+
         full_url = f"https://www.ema.gov.sg{link}"  # Ensure full URL
         print(f"Downloading: {full_url}")
-        download_file(full_url, 'C:/Users/stucws/Documents/astar/data/dataset/EMA dataset')
+        download_file(full_url, 'C:/Users/stucws/Documents/astar/data/demand_datasets/raw/EMA dataset/')
 
 
 # Iterate through each option in the year dropdown
@@ -71,6 +74,8 @@ for i, year in enumerate(year_options):
     download_xls_links()
 
     page_numbers = driver.find_elements(By.CLASS_NAME, 'cmp-media__tag')
+    if len(page_numbers) == 0:
+        continue
     last_page = page_numbers[-1].text
 
     # Find and click the 'Next' button
