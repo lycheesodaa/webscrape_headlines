@@ -196,6 +196,10 @@ for train_time in range(0, train_times):
             plt.grid(True)
             plt.tight_layout()
 
+            # just to store all the different runs, otherwise new runs will overwrite previous runs
+            result_folder = os.path.join(result_folder, 'run'+str(train_time))
+            result_folder.mkdir(parents=True, exist_ok=True)
+
             # Save Plot
             plot_file = os.path.join(result_folder, f"CNN_MultiStep_feat{TopFeaturePerc}_lb{lookback}_pl{output_step}.png")
             plt.savefig(plot_file, dpi=300)

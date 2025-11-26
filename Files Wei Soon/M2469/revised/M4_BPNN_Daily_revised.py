@@ -19,7 +19,7 @@ train_times = 3
 fea_select_flag = 1 # choose with or without feature selection
 TopFeaturePercs = [0, 0.25, 0.5, 0.75] # Select top % of the full set of features
 # TopFeaturePercs = [0] # Select top % of the full set of features
-GPU_ID = 0
+GPU_ID = 1
 train_size = 0.6
 val_size = 0.2
 test_size = 0.2
@@ -190,6 +190,10 @@ for train_time in range(0, train_times):
             plt.legend(loc="upper left", bbox_to_anchor=(1, 1))
             plt.grid(True)
             plt.tight_layout()
+
+            # just to store all the different runs, otherwise new runs will overwrite previous runs
+            result_folder = os.path.join(result_folder, 'run'+str(train_time))
+            result_folder.mkdir(parents=True, exist_ok=True)
 
             # Save Plot
             plot_file = os.path.join(result_folder, f"BPNN_MultiStep_feat{TopFeaturePerc}_lb{lookback}_pl{output_step}.png")
