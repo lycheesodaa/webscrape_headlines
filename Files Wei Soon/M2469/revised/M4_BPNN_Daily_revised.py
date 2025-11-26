@@ -65,6 +65,10 @@ mapes_dfs = pd.DataFrame()
 for train_time in range(0, train_times):
     print('train time=', train_time)
 
+    # just to store all the different runs, otherwise new runs will overwrite previous runs
+    run_result_folder = result_folder / f'run{str(train_time)}'
+    run_result_folder.mkdir(parents=True, exist_ok=True)
+
     for TopFeaturePerc in TopFeaturePercs:
         print("TopFeaturePerc=", TopFeaturePerc)
         mapes = []
@@ -191,12 +195,8 @@ for train_time in range(0, train_times):
             plt.grid(True)
             plt.tight_layout()
 
-            # just to store all the different runs, otherwise new runs will overwrite previous runs
-            result_folder = os.path.join(result_folder, 'run'+str(train_time))
-            result_folder.mkdir(parents=True, exist_ok=True)
-
             # Save Plot
-            plot_file = os.path.join(result_folder, f"BPNN_MultiStep_feat{TopFeaturePerc}_lb{lookback}_pl{output_step}.png")
+            plot_file = os.path.join(run_result_folder, f"BPNN_MultiStep_feat{TopFeaturePerc}_lb{lookback}_pl{output_step}.png")
             plt.savefig(plot_file, dpi=300)
             print(f"Plot saved to {plot_file}")
             # plt.show()
@@ -213,7 +213,7 @@ for train_time in range(0, train_times):
                     for item in [f"True_Step_{step + 1}", f"Predicted_Step_{step + 1}"]
                 ]
             )
-            results_file = os.path.join(result_folder, f"BPNN_MultiStep_feat{TopFeaturePerc}_lb{lookback}_pl{output_step}.xlsx")
+            results_file = os.path.join(run_result_folder, f"BPNN_MultiStep_feat{TopFeaturePerc}_lb{lookback}_pl{output_step}.xlsx")
             results_df.to_excel(results_file, index=False, engine="openpyxl")
             print(f"Results saved to {results_file}")
 
